@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grindly — WhatsApp Message Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1a1210; --bg2: #231815; --bg3: #2e1f1a;
+  --cream: #f0e8d8; --cream2: #d4c9b4;
+  --gold: #c8922a; --gold2: #e8b84b;
+  --red: #c23b22; --green: #2e7d5e;
+  --border: rgba(200,146,42,0.2); --border2: rgba(200,146,42,0.45);
+  --sans: 'DM Sans', sans-serif; --serif: 'DM Serif Display', serif;
+}
+html, body { min-height: 100vh; background: var(--bg); color: var(--cream); font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+.page { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
+
+.header { display: flex; align-items: center; gap: 12px; margin-bottom: 36px; padding-bottom: 20px; border-bottom: 0.5px solid var(--border); }
+.logo-pill { background: var(--gold); color: #1a1210; font-family: var(--sans); font-weight: 600; font-size: 12px; letter-spacing: 0.09em; padding: 5px 12px; border-radius: 20px; text-transform: uppercase; }
+.header-title { font-family: var(--serif); font-size: 22px; color: var(--cream); }
+.header-sub { margin-left: auto; font-size: 11px; color: var(--cream2); opacity: 0.55; letter-spacing: 0.06em; text-transform: uppercase; }
+
+.section-label { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--cream2); opacity: 0.65; margin: 20px 0 10px; font-weight: 500; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 4px; }
+.form-full { grid-column: 1 / -1; }
+@media (max-width: 520px) { .form-grid { grid-template-columns: 1fr; } .form-full { grid-column: 1; } }
+
+label { display: block; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; font-weight: 500; }
+
+input, select, textarea {
+  width: 100%; background: var(--bg2); border: 0.5px solid var(--border); border-radius: 9px;
+  color: var(--cream); font-family: var(--sans); font-size: 14px; padding: 11px 14px;
+  outline: none; transition: border-color 0.2s, background 0.2s; appearance: none; -webkit-appearance: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--border2); background: var(--bg3); }
+input::placeholder, textarea::placeholder { color: var(--cream2); opacity: 0.35; }
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23c8922a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; cursor: pointer;
+}
+select option { background: #231815; color: var(--cream); }
+textarea { resize: vertical; min-height: 90px; }
+
+.hook-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+@media (max-width: 480px) { .hook-grid { grid-template-columns: 1fr; } }
+.hook-btn {
+  background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px;
+  color: var(--cream2); font-family: var(--sans); font-size: 13px; padding: 12px 14px;
+  cursor: pointer; transition: all 0.15s; text-align: left; line-height: 1.5;
+}
+.hook-btn:hover { border-color: var(--border2); color: var(--cream); background: var(--bg3); }
+.hook-btn.active { background: var(--bg3); border-color: var(--gold); color: var(--gold2); }
+.hook-sub { display: block; font-size: 11px; opacity: 0.55; margin-top: 2px; }
+
+.tone-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 480px) { .tone-grid { grid-template-columns: 1fr; } }
+.tone-btn {
+  background: var(--bg2); border: 0.5px solid var(--border); border-radius: 9px;
+  color: var(--cream2); font-family: var(--sans); font-size: 13px; padding: 11px 10px;
+  cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.tone-btn:hover { border-color: var(--border2); color: var(--cream); background: var(--bg3); }
+.tone-btn.active { background: var(--bg3); border-color: var(--gold); color: var(--gold2); }
+
+.generate-btn {
+  width: 100%; background: var(--gold); color: #1a1210; border: none; border-radius: 11px;
+  font-family: var(--sans); font-size: 14px; font-weight: 600; letter-spacing: 0.06em;
+  padding: 16px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; margin-top: 20px;
+}
+.generate-btn:hover { background: var(--gold2); transform: translateY(-1px); }
+.generate-btn:active { transform: translateY(0); }
+.generate-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.divider { height: 0.5px; background: var(--border); margin: 32px 0; }
+
+.messages-area { display: none; }
+.messages-area.visible { display: block; }
+.results-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); font-weight: 500; margin-bottom: 18px; }
+
+.msg-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 14px; margin-bottom: 16px; overflow: hidden; animation: fadeUp 0.3s ease both; }
+.msg-card:nth-child(2) { animation-delay: 0.1s; }
+.msg-card:nth-child(3) { animation-delay: 0.2s; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.msg-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 0.5px solid var(--border); }
+.msg-type { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; }
+.type-short { color: #60b09a; } .type-medium { color: #e8b84b; } .type-hook { color: #e07a5f; }
+.msg-meta { font-size: 11px; color: var(--cream2); opacity: 0.45; }
+.msg-body { padding: 18px 16px; font-size: 14px; line-height: 1.75; color: var(--cream); white-space: pre-wrap; word-break: break-word; }
+
+.msg-actions { display: flex; gap: 10px; padding: 12px 16px; border-top: 0.5px solid var(--border); }
+.copy-btn {
+  flex: 1; background: transparent; border: 0.5px solid var(--border); border-radius: 8px;
+  color: var(--cream2); font-family: var(--sans); font-size: 12px; font-weight: 500;
+  letter-spacing: 0.05em; padding: 9px; cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+}
+.copy-btn:hover { border-color: var(--border2); color: var(--cream); background: var(--bg3); }
+.copy-btn.copied { border-color: #2e7d5e; color: #4caf50; }
+.wa-btn {
+  background: #25D366; border: none; border-radius: 8px; color: #fff;
+  font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+  padding: 9px 18px; cursor: pointer; transition: background 0.15s; text-transform: uppercase; white-space: nowrap;
+}
+.wa-btn:hover { background: #1ebe5d; }
+
+.loading-dots { display: inline-flex; gap: 5px; align-items: center; }
+.loading-dots span { width: 5px; height: 5px; border-radius: 50%; background: #1a1210; animation: blink 1.2s infinite; }
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+
+.translate-indicator {
+  display: none; align-items: center; gap: 8px; font-size: 12px; color: var(--gold);
+  padding: 8px 12px; background: var(--bg2); border: 0.5px solid var(--border);
+  border-radius: 8px; margin-top: 6px;
+}
+.translate-indicator.visible { display: flex; }
+.translate-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); animation: blink 1s infinite; }
+
+.tip-box {
+  background: var(--bg2); border: 0.5px solid var(--border); border-left: 2px solid var(--gold);
+  border-radius: 9px; padding: 14px 16px; font-size: 13px; color: var(--cream2); line-height: 1.65; margin-top: 6px;
+}
+.tip-box strong { color: var(--gold2); font-weight: 500; }
+
+.footer { margin-top: 60px; padding-top: 20px; border-top: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.footer-brand { font-family: var(--serif); font-size: 16px; color: var(--gold); }
+.footer-meta { font-size: 11px; color: var(--cream2); opacity: 0.4; letter-spacing: 0.04em; }
+
+input.error { border-color: var(--red) !important; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <span class="logo-pill">Grindly</span>
+    <span class="header-title">WhatsApp Generator</span>
+    <div class="header-sub">F&amp;B Prospecting · GCC</div>
+  </div>
+
+  <div class="section-label">Prospect information</div>
+  <div class="form-grid">
+    <div>
+      <label>Venue name *</label>
+      <input type="text" id="name" placeholder="ex: Noir Café" autocomplete="off" />
+    </div>
+    <div>
+      <label>Type</label>
+      <select id="type">
+        <option value="café">Café / Coffee shop</option>
+        <option value="restaurant">Restaurant</option>
+        <option value="catering">Catering / Traiteur</option>
+        <option value="bakery">Bakery / Boulangerie</option>
+        <option value="cocktail bar">Cocktail bar</option>
+        <option value="food concept">Food concept / Pop-up</option>
+        <option value="cloud kitchen">Cloud kitchen</option>
+        <option value="F&B brand">F&amp;B Brand</option>
+      </select>
+    </div>
+    <div>
+      <label>Location</label>
+      <select id="location">
+        <optgroup label="🇦🇪 Dubai">
+          <option>Dubai Marina</option>
+          <option>JLT (Jumeirah Lake Towers)</option>
+          <option>DIFC</option>
+          <option>Downtown Dubai</option>
+          <option>Business Bay</option>
+          <option>Al Wasl</option>
+          <option>Jumeirah 1</option>
+          <option>Jumeirah 2</option>
+          <option>Jumeirah 3</option>
+          <option>Jumeirah Beach Residence (JBR)</option>
+          <option>Palm Jumeirah</option>
+          <option>City Walk</option>
+          <option>Al Quoz</option>
+          <option>Dubai Hills Estate</option>
+          <option>Bluewaters Island</option>
+          <option>Meydan</option>
+          <option>Mohammed Bin Rashid City (MBR)</option>
+          <option>Dubai Creek Harbour</option>
+          <option>Deira</option>
+          <option>Bur Dubai</option>
+          <option>Al Barsha</option>
+          <option>Motor City</option>
+          <option>Arabian Ranches</option>
+          <option>Al Garhoud</option>
+          <option>Oud Metha</option>
+          <option>Al Karama</option>
+          <option>Dubai South</option>
+          <option>Dubai Silicon Oasis</option>
+          <option>Al Nahda (Dubai)</option>
+          <option>Dubai Festival City</option>
+          <option>Dubai Mall area</option>
+          <option>Dubai other</option>
+        </optgroup>
+        <optgroup label="🇦🇪 Abu Dhabi">
+          <option>Abu Dhabi Island</option>
+          <option>Al Reem Island</option>
+          <option>Yas Island</option>
+          <option>Saadiyat Island</option>
+          <option>Al Maryah Island</option>
+          <option>Khalidiyah</option>
+          <option>Corniche</option>
+          <option>Al Bateen</option>
+          <option>Al Raha Beach</option>
+          <option>Masdar City</option>
+          <option>Al Mushrif</option>
+          <option>Al Nahyan</option>
+          <option>Electra Street area</option>
+          <option>Hamdan Street area</option>
+          <option>Abu Dhabi other</option>
+        </optgroup>
+        <optgroup label="🇦🇪 Other UAE">
+          <option>Sharjah</option>
+          <option>Ajman</option>
+          <option>Ras Al Khaimah</option>
+          <option>Fujairah</option>
+          <option>Umm Al Quwain</option>
+          <option>Al Ain</option>
+        </optgroup>
+        <optgroup label="🇸🇦 Saudi Arabia">
+          <option>Riyadh</option>
+          <option>Jeddah</option>
+          <option>Mecca</option>
+          <option>Medina</option>
+          <option>Khobar</option>
+          <option>Dammam</option>
+          <option>NEOM</option>
+        </optgroup>
+        <optgroup label="🇶🇦 Qatar">
+          <option>Doha</option>
+          <option>Lusail</option>
+          <option>The Pearl Qatar</option>
+          <option>West Bay</option>
+        </optgroup>
+        <optgroup label="🇰🇼 Kuwait">
+          <option>Kuwait City</option>
+          <option>Salmiya</option>
+          <option>Hawalli</option>
+        </optgroup>
+        <optgroup label="🇧🇭 Bahrain">
+          <option>Manama</option>
+          <option>Adliya</option>
+          <option>Seef</option>
+        </optgroup>
+        <optgroup label="🇴🇲 Oman">
+          <option>Muscat</option>
+          <option>Qurum</option>
+          <option>Al Mouj (The Wave)</option>
+        </optgroup>
+      </select>
+    </div>
+    <div>
+      <label>Contact first name</label>
+      <input type="text" id="contact" placeholder="ex: Ahmed, Fatima..." autocomplete="off" />
+    </div>
+    <div class="form-full">
+      <label>Weaknesses observed on their Instagram</label>
+      <textarea id="weaknesses" placeholder="ex: no Reels in 2 months, inconsistent visuals, bio with no CTA, low engagement, posting only in English..."></textarea>
+      <div class="translate-indicator" id="translate-ind">
+        <span class="translate-dot"></span>
+        Translating to English...
+      </div>
+      <div class="tip-box">
+        <strong>Tip:</strong> Spend 2 minutes on their Instagram before generating. The more specific you are, the higher your response rate.
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:24px">Approach angle</div>
+  <div class="hook-grid">
+    <button class="hook-btn active" data-hook="observation" onclick="selectHook(this)">
+      🔍 Direct observation
+      <span class="hook-sub">I looked at your account and noticed...</span>
+    </button>
+    <button class="hook-btn" data-hook="audit" onclick="selectHook(this)">
+      📊 Free audit offer
+      <span class="hook-sub">I offer you a complimentary Instagram audit</span>
+    </button>
+    <button class="hook-btn" data-hook="expertise" onclick="selectHook(this)">
+      ✨ Expertise first
+      <span class="hook-sub">Boutique F&amp;B agency, 12 years of experience</span>
+    </button>
+    <button class="hook-btn" data-hook="question" onclick="selectHook(this)">
+      💬 Engaging question
+      <span class="hook-sub">Opens the conversation without pitching</span>
+    </button>
+  </div>
+
+  <div class="section-label" style="margin-top:20px">Tone</div>
+  <div class="tone-grid">
+    <button class="tone-btn active" data-tone="professional" onclick="selectTone(this)">Professional</button>
+    <button class="tone-btn" data-tone="warm" onclick="selectTone(this)">Warm</button>
+    <button class="tone-btn" data-tone="direct" onclick="selectTone(this)">Direct &amp; concise</button>
+  </div>
+
+  <button class="generate-btn" id="gen-btn" onclick="generateMessages()">
+    Generate 3 messages
+  </button>
+
+  <div class="divider"></div>
+
+  <div class="messages-area" id="messages-area">
+    <div class="results-label">3 versions — pick the best fit</div>
+    <div id="messages-container"></div>
+  </div>
+
+  <div class="footer">
+    <span class="footer-brand">Grindly Agency</span>
+    <span class="footer-meta">grindly.agency · hello@grindly-agency.com</span>
+  </div>
+
+</div>
+
+<script>
+let selectedHook = 'observation';
+let selectedTone = 'professional';
+let translateTimer = null;
+
+function selectHook(btn) {
+  document.querySelectorAll('.hook-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedHook = btn.dataset.hook;
+}
+
+function selectTone(btn) {
+  document.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedTone = btn.dataset.tone;
+}
+
+// Auto-translate weaknesses field on blur
+document.getElementById('weaknesses').addEventListener('blur', async function() {
+  const val = this.value.trim();
+  if (!val || isEnglish(val)) return;
+  const ind = document.getElementById('translate-ind');
+  ind.classList.add('visible');
+  try {
+    const translated = await translateToEnglish(val);
+    if (translated && translated !== val) this.value = translated;
+  } catch(e) {}
+  ind.classList.remove('visible');
+});
+
+function isEnglish(text) {
+  // Rough heuristic: if more than 80% ASCII, assume English
+  const ascii = text.split('').filter(c => c.charCodeAt(0) < 128).length;
+  return ascii / text.length > 0.8;
+}
+
+async function translateToEnglish(text) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: `Translate the following text to English. Return ONLY the translated text, nothing else, no explanation:\n\n${text}`
+      }]
+    })
+  });
+  const data = await response.json();
+  return data.content?.[0]?.text?.trim() || text;
+}
+
+function getMessages(name, type, location, contact, weaknesses, hook) {
+  const greet = contact ? `Hi ${contact},` : 'Hi there,';
+  const n = name || 'your venue';
+  const w1 = weaknesses
+    ? weaknesses.split(/[,;.]/)[0].trim().replace(/^[·\-\*]\s*/, '')
+    : 'some untapped content potential';
+
+  const msgs = {
+    observation: [
+      { type: 'Short', typeKey: 'short',
+        text: `${greet} 👋\n\nI came across ${n}'s Instagram and I couldn't help noticing — there's a lot of potential there that isn't being fully leveraged yet.\n\nI'm Sarah, founder of Grindly Agency — we specialize exclusively in social media for cafés and restaurants in the UAE and GCC.\n\nWould you be open to a quick 15-min call this week? No pitch, just a conversation. 🙏` },
+      { type: 'Medium', typeKey: 'medium',
+        text: `${greet} 👋\n\nI've been following ${n} on Instagram — beautiful concept, but I noticed a few things that are holding your online presence back: ${w1}.\n\nAt Grindly Agency, we work exclusively with F&B brands across the UAE and GCC to turn their social media into a real growth driver, not just a gallery of pretty pictures.\n\nI'd love to share a quick audit of your account — no cost, no commitment. Would that be useful? 🙌` },
+      { type: 'With audit hook', typeKey: 'hook',
+        text: `${greet} ✨\n\nI just did a quick audit of ${n}'s Instagram and I spotted 3 quick wins that could meaningfully improve your reach and engagement.\n\nI'm Sarah, founder of Grindly Agency. We specialize in social media strategy for cafés and restaurants across the UAE and GCC.\n\nI'd love to share the audit with you — completely free, no strings attached. Would you have 10 minutes this week? ☕` }
+    ],
+    audit: [
+      { type: 'Short', typeKey: 'short',
+        text: `${greet} 👋\n\nQuick one — I run Grindly Agency, a boutique social media agency specialized in F&B brands across the UAE and GCC.\n\nI'd love to offer ${n} a complimentary Instagram audit — a clear, actionable report on what's working and what could be improved.\n\nInterested? Takes 10 minutes of your time. 🙏` },
+      { type: 'Medium', typeKey: 'medium',
+        text: `${greet} ✨\n\nI'm Sarah, founder of Grindly Agency — we focus exclusively on social media for cafés and restaurants across the UAE and GCC.\n\nI'm offering complimentary Instagram audits to a handful of F&B brands this month, and I think ${n} could really benefit from one.\n\nThe audit covers content consistency, visual identity, Reels strategy, engagement, and quick wins. No cost, no obligation.\n\nWould you be open to it? 🙌` },
+      { type: 'With audit hook', typeKey: 'hook',
+        text: `${greet} ☕\n\nI specialize in social media for F&B brands across the UAE and GCC, and I'm giving away a few free Instagram audits this month as part of my launch.\n\nI looked at ${n}'s account and I already have some thoughts I'd love to share. The audit is yours — PDF format, actionable, no fluff.\n\nWould that be useful? Happy to send it over with no strings attached. 🙏` }
+    ],
+    expertise: [
+      { type: 'Short', typeKey: 'short',
+        text: `${greet} 👋\n\nI'm Sarah — I run Grindly Agency, a boutique social media agency built specifically for cafés and restaurants in the UAE and GCC.\n\n12 years in marketing, a decade as a food content creator, and a deep understanding of the regional F&B market.\n\nWould love to explore if there's a fit with ${n}. Open to a quick call? 🙏` },
+      { type: 'Medium', typeKey: 'medium',
+        text: `${greet} ✨\n\nMy name is Sarah, founder of Grindly Agency — a boutique social media agency in Dubai built exclusively for F&B brands.\n\nWhy does that matter? Because cafés and restaurants need a completely different approach than any other industry. We understand the culture, the audience, and what it takes to stand out in markets like the UAE and GCC.\n\nI'd love to learn more about ${n}'s social media goals. Would you be open to a quick conversation this week? ☕` },
+      { type: 'With audit hook', typeKey: 'hook',
+        text: `${greet} 🙌\n\nI run Grindly Agency — a Dubai-based social media agency exclusively for cafés and restaurants. Not a generalist agency. Not a freelancer. A focused partner who truly speaks your industry.\n\nI've been looking at ${n}'s Instagram and I have a few concrete ideas I'd love to share, including a quick audit of your current presence.\n\nWould that be valuable? Happy to start there, no commitment needed. 🙏` }
+    ],
+    question: [
+      { type: 'Short', typeKey: 'short',
+        text: `${greet} 👋\n\nQuick question — is social media something you manage in-house at ${n}, or are you looking for support on that side?\n\nJust curious — I run a boutique agency specialized in F&B social media in Dubai and always love connecting with great concepts. 😊` },
+      { type: 'Medium', typeKey: 'medium',
+        text: `${greet} ✨\n\nI've been following ${n} for a while and I'm a big fan of the concept 🙌\n\nI wanted to ask — how do you currently handle your social media? Is it something the team manages internally, or do you work with someone on it?\n\nI ask because I run Grindly Agency, a social media agency built specifically for cafés and restaurants in the UAE and GCC, and I'm always curious how great F&B brands approach their digital presence.\n\nNo pitch at all — just genuinely interested! 😊` },
+      { type: 'With audit hook', typeKey: 'hook',
+        text: `${greet} 👋\n\nLove what ${n} is doing — great concept.\n\nRandom question: if I put together a quick, honest audit of your Instagram with 3 things you could improve right now, would that be something useful for you?\n\nNo cost, no obligation. I just love doing this for F&B brands I find interesting. 😊` }
+    ]
+  };
+  return msgs[hook] || msgs['observation'];
+}
+
+async function generateMessages() {
+  const nameEl = document.getElementById('name');
+  const name = nameEl.value.trim();
+  if (!name) {
+    nameEl.classList.add('error');
+    nameEl.focus();
+    setTimeout(() => nameEl.classList.remove('error'), 1800);
+    return;
+  }
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-dots"><span></span><span></span><span></span></span>';
+
+  const type = document.getElementById('type').value;
+  const location = document.getElementById('location').value;
+  const contact = document.getElementById('contact').value.trim();
+  let weaknesses = document.getElementById('weaknesses').value.trim();
+
+  // Translate weaknesses if not English
+  if (weaknesses && !isEnglish(weaknesses)) {
+    const ind = document.getElementById('translate-ind');
+    ind.classList.add('visible');
+    try {
+      const translated = await translateToEnglish(weaknesses);
+      if (translated) {
+        weaknesses = translated;
+        document.getElementById('weaknesses').value = translated;
+      }
+    } catch(e) {}
+    ind.classList.remove('visible');
+  }
+
+  await new Promise(r => setTimeout(r, 400));
+
+  const msgs = getMessages(name, type, location, contact, weaknesses, selectedHook);
+  const container = document.getElementById('messages-container');
+  const area = document.getElementById('messages-area');
+  container.innerHTML = '';
+
+  const typeClass = { short: 'type-short', medium: 'type-medium', hook: 'type-hook' };
+  const charTarget = { short: '~300 chars', medium: '~500 chars', hook: '~420 chars' };
+
+  msgs.forEach((msg, i) => {
+    const card = document.createElement('div');
+    card.className = 'msg-card';
+    card.dataset.text = msg.text;
+    card.innerHTML = `
+      <div class="msg-header">
+        <span class="msg-type ${typeClass[msg.typeKey]}">${msg.type}</span>
+        <span class="msg-meta">${msg.text.length} chars · ${charTarget[msg.typeKey]}</span>
+      </div>
+      <div class="msg-body">${escHtml(msg.text)}</div>
+      <div class="msg-actions">
+        <button class="copy-btn" onclick="copyMsg(${i}, this)">📋 Copy</button>
+        <button class="wa-btn" onclick="openWA(${i})">WhatsApp ↗</button>
+      </div>`;
+    container.appendChild(card);
+  });
+
+  area.classList.add('visible');
+  btn.disabled = false;
+  btn.innerHTML = '↺ Regenerate';
+  area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyMsg(idx, btn) {
+  const text = document.querySelectorAll('.msg-card')[idx].dataset.text;
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(() => flashCopied(btn));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); flashCopied(btn);
+  }
+}
+
+function flashCopied(btn) {
+  const orig = btn.textContent;
+  btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2200);
+}
+
+function openWA(idx) {
+  const text = encodeURIComponent(document.querySelectorAll('.msg-card')[idx].dataset.text);
+  window.open(`https://wa.me/?text=${text}`, '_blank');
+}
+</script>
+</body>
+</html>
