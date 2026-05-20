@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;600;700;800&family=Poppins:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 /* ── VARIABLES ───────────────────────────────────────────── */
 :root {
@@ -264,6 +266,40 @@ body{font-family:var(--font-body);background:var(--ui-bg);color:var(--ui-text);m
 .unsaved-warning{position:fixed;top:68px;left:50%;transform:translateX(-50%);background:var(--champagne);color:var(--espresso);font-family:var(--font-display);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:7px 18px;border-radius:3px;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
 .unsaved-warning.visible{opacity:1}
 
+/* ── COMPLETION INDICATOR ────────────────────────────────── */
+.completion-bar{display:flex;align-items:center;gap:8px;padding:8px 20px;background:rgba(32,25,26,.06);border-bottom:1px solid var(--ui-border)}
+.completion-bar__label{font-family:var(--font-display);font-weight:700;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ui-muted);flex-shrink:0}
+.completion-bar__track{flex:1;height:4px;background:var(--ui-border);border-radius:2px;overflow:hidden}
+.completion-bar__fill{height:100%;border-radius:2px;background:var(--champagne);transition:width .3s,background .3s}
+.completion-bar__count{font-family:var(--font-display);font-weight:700;font-size:9px;letter-spacing:.10em;color:var(--ui-muted);flex-shrink:0;white-space:nowrap}
+
+/* ── EXPORT PROGRESS OVERLAY ─────────────────────────────── */
+.export-overlay{display:none;position:fixed;inset:0;background:rgba(32,25,26,.88);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.export-overlay.active{display:flex}
+.export-overlay__title{font-family:var(--font-display);font-weight:800;font-size:14px;letter-spacing:.10em;text-transform:uppercase;color:var(--porcelain)}
+.export-overlay__bar-wrap{width:240px;height:3px;background:rgba(254,254,254,.18);border-radius:2px;overflow:hidden}
+.export-overlay__bar{height:100%;background:var(--champagne);border-radius:2px;transition:width .2s}
+.export-overlay__status{font-family:var(--font-body);font-size:11px;color:rgba(254,254,254,.55);font-style:italic}
+
+/* ── CHECKLIST MODAL (pre-export) ────────────────────────── */
+.checklist-modal{display:none;position:fixed;inset:0;background:rgba(32,25,26,.75);z-index:999;align-items:center;justify-content:center}
+.checklist-modal.active{display:flex}
+.checklist-modal__box{background:var(--porcelain);border-radius:6px;padding:32px 36px;max-width:480px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto}
+.checklist-modal__title{font-family:var(--font-display);font-weight:800;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--espresso);margin-bottom:4px}
+.checklist-modal__sub{font-family:var(--font-body);font-size:11.5px;color:var(--ui-muted);margin-bottom:20px;line-height:1.5}
+.checklist-modal__section{margin-bottom:16px}
+.checklist-modal__section-label{font-family:var(--font-display);font-weight:700;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ui-muted);margin-bottom:8px}
+.checklist-item{display:flex;align-items:flex-start;gap:10px;margin-bottom:7px;cursor:pointer}
+.checklist-item input[type=checkbox]{margin-top:2px;flex-shrink:0;accent-color:var(--espresso);width:14px;height:14px;cursor:pointer}
+.checklist-item__text{font-family:var(--font-body);font-size:11.5px;color:var(--ui-text);line-height:1.45}
+.checklist-item input:checked + .checklist-item__text{color:var(--ui-muted);text-decoration:line-through}
+.checklist-modal__actions{display:flex;gap:10px;margin-top:22px}
+.checklist-modal__go{font-family:var(--font-display);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;background:var(--espresso);color:var(--porcelain);border:none;border-radius:3px;padding:11px 22px;cursor:pointer;flex:1}
+.checklist-modal__cancel{font-family:var(--font-display);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;background:transparent;color:var(--ui-muted);border:1px solid var(--ui-border);border-radius:3px;padding:11px 14px;cursor:pointer}
+.checklist-modal__warning{font-family:var(--font-display);font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--terracotta);margin-top:10px;display:none}
+.checklist-modal__warning.visible{display:block}
+
+
 /* ── EXECUTIVE SUMMARY PAGE (Phase 5) ───────────────────── */
 .exec__header{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:5mm;border-bottom:.3pt solid var(--hairline-dark);margin-bottom:6mm}
 .exec__title-block{}
@@ -330,6 +366,56 @@ body{font-family:var(--font-body);background:var(--ui-bg);color:var(--ui-text);m
 
 <!-- UNSAVED WARNING (Phase 4) -->
 <div class="unsaved-warning" id="unsavedWarning">Unsaved changes</div>
+
+<!-- COMPLETION BAR -->
+<div class="completion-bar" id="completionBar">
+  <span class="completion-bar__label">Completion</span>
+  <div class="completion-bar__track"><div class="completion-bar__fill" id="completionFill" style="width:0%"></div></div>
+  <span class="completion-bar__count" id="completionCount">0 / 13</span>
+</div>
+
+<!-- CHECKLIST MODAL (pre-export) -->
+<div class="checklist-modal" id="checklistModal">
+  <div class="checklist-modal__box">
+    <div class="checklist-modal__title">Pre-Export Checklist</div>
+    <div class="checklist-modal__sub">Confirm these points before generating the PDF. This is your quality gate.</div>
+
+    <div class="checklist-modal__section">
+      <div class="checklist-modal__section-label">Content</div>
+      <label class="checklist-item"><input type="checkbox"><span class="checklist-item__text">Business name and Instagram handle are correctly spelled on the cover</span></label>
+      <label class="checklist-item"><input type="checkbox"><span class="checklist-item__text">Audit date matches the send date</span></label>
+      <label class="checklist-item"><input type="checkbox"><span class="checklist-item__text">All 13 sections have real content, no placeholder text remaining</span></label>
+      <label class="checklist-item"><input type="checkbox"><span class="checklist-item__text">Recommendations are specific to this client, not generic</span></label>
+      <label class="checklist-item"><input type="checkbox"><span class="checklist-item__text">No em-dash or en-dash used as punctuation (replaced by commas)</span></label>
+    </div>
+
+    <div class="checklist-modal__section">
+      <div class="checklist-modal__section-label">Visual</div>
+      <label class="checklist-item"><input type="checkbox"><span class="checklist-item__text">All scores are filled and colour-coded correctly (Sage 70+, Champagne 40-69, Terracotta 0-39)</span></label>
+      <label class="checklist-item"><input type="checkbox"><span class="checklist-item__text">Polaroid photos uploaded where required (sections with screenshots)</span></label>
+      <label class="checklist-item"><input type="checkbox"><span class="checklist-item__text">Priority Recommendations has 5 concrete actions with effort levels set</span></label>
+    </div>
+
+    <div class="checklist-modal__section">
+      <div class="checklist-modal__section-label">Delivery</div>
+      <label class="checklist-item"><input type="checkbox"><span class="checklist-item__text">Calendly discovery call link will be mentioned in the delivery message</span></label>
+      <label class="checklist-item"><input type="checkbox"><span class="checklist-item__text">PDF filename will follow: Grindly-Audit-[BusinessName]-[Date].pdf</span></label>
+    </div>
+
+    <div class="checklist-modal__warning" id="checklistWarning">Please review the checklist before exporting.</div>
+    <div class="checklist-modal__actions">
+      <button class="checklist-modal__go" id="checklistGo">Generate PDF</button>
+      <button class="checklist-modal__cancel" id="checklistCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT PROGRESS OVERLAY -->
+<div class="export-overlay" id="exportOverlay">
+  <div class="export-overlay__title">Generating PDF</div>
+  <div class="export-overlay__bar-wrap"><div class="export-overlay__bar" id="exportBar" style="width:0%"></div></div>
+  <div class="export-overlay__status" id="exportStatus">Preparing pages…</div>
+</div>
 
 <!-- PRINT MODAL -->
 <div class="print-modal" id="printModal">
@@ -897,18 +983,125 @@ function renderPreview(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// EXPORT PDF
+// COMPLETION TRACKER
 // ═══════════════════════════════════════════════════════════
-document.getElementById('btnExport').addEventListener('click',()=>{
-  document.getElementById('printModal').classList.add('active');
+function updateCompletion(){
+  let filled = 0;
+  const total = SECTIONS.length;
+
+  SECTIONS.forEach((sec, i) => {
+    if(sec.isExecutiveSummary){
+      // Exec summary: complete if intro is filled
+      if((val('intro-'+i)||'').trim().length > 10) filled++;
+    } else if(sec.isPriorityReco || sec.isNextStep){
+      // Complete if at least 3 recoTitles filled
+      let count = 0;
+      for(let n=1;n<=5;n++){
+        if((val('recoTitle-'+i+'-'+n)||'').trim().length > 3) count++;
+      }
+      if(count >= 3) filled++;
+    } else {
+      // Standard: complete if intro + obs + at least 1 reco filled
+      const hasIntro = (val('intro-'+i)||'').trim().length > 10;
+      const hasObs   = (val('obs-'+i)||'').trim().length > 10;
+      let recoCount  = 0;
+      for(let n=1;n<=5;n++){
+        if((val('reco'+n+'-'+i)||'').trim().length > 3) recoCount++;
+      }
+      if(hasIntro && hasObs && recoCount >= 1) filled++;
+    }
+  });
+
+  const pct = Math.round((filled/total)*100);
+  const fill = document.getElementById('completionFill');
+  const count = document.getElementById('completionCount');
+  if(fill) {
+    fill.style.width = pct+'%';
+    fill.style.background = pct===100 ? 'var(--sage)' : pct>=60 ? 'var(--champagne)' : 'var(--terracotta)';
+  }
+  if(count) count.textContent = filled+' / '+total;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CHECKLIST MODAL
+// ═══════════════════════════════════════════════════════════
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  // Reset checkboxes
+  document.querySelectorAll('#checklistModal input[type=checkbox]').forEach(cb => cb.checked = false);
+  document.getElementById('checklistWarning').classList.remove('visible');
+  document.getElementById('checklistModal').classList.add('active');
 });
-document.getElementById('printGo').addEventListener('click',()=>{
-  document.getElementById('printModal').classList.remove('active');
-  setTimeout(()=>window.print(),300);
+
+document.getElementById('checklistCancel').addEventListener('click', ()=>{
+  document.getElementById('checklistModal').classList.remove('active');
 });
-document.getElementById('printCancel').addEventListener('click',()=>{
-  document.getElementById('printModal').classList.remove('active');
+
+document.getElementById('checklistGo').addEventListener('click', ()=>{
+  const checkboxes = document.querySelectorAll('#checklistModal input[type=checkbox]');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  if(!allChecked){
+    document.getElementById('checklistWarning').classList.add('visible');
+    return;
+  }
+  document.getElementById('checklistModal').classList.remove('active');
+  generatePDF();
 });
+
+// ═══════════════════════════════════════════════════════════
+// PDF EXPORT — html2canvas + jsPDF
+// ═══════════════════════════════════════════════════════════
+async function generatePDF(){
+  const overlay   = document.getElementById('exportOverlay');
+  const bar       = document.getElementById('exportBar');
+  const statusEl  = document.getElementById('exportStatus');
+
+  overlay.classList.add('active');
+
+  // Build filename
+  const name = (val('clientName') || 'Audit').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const d    = new Date();
+  const dateStr = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const filename = 'Grindly-Audit-'+name+'-'+dateStr+'.pdf';
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pages = document.querySelectorAll('#pdfPages .pdf-page');
+    const total = pages.length;
+
+    for(let idx=0; idx<total; idx++){
+      const page = pages[idx];
+      statusEl.textContent = 'Rendering page '+(idx+1)+' of '+total+'…';
+      bar.style.width = Math.round(((idx)/total)*90)+'%';
+
+      const canvas = await html2canvas(page, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+        logging: false,
+        width:  page.offsetWidth,
+        height: page.offsetHeight
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      if(idx > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+    }
+
+    bar.style.width = '100%';
+    statusEl.textContent = 'Saving…';
+    await new Promise(r => setTimeout(r, 300));
+
+    pdf.save(filename);
+  } catch(e){
+    console.error('PDF generation error:', e);
+    alert('PDF generation failed. Please try again or use the Print option.');
+  } finally {
+    overlay.classList.remove('active');
+    bar.style.width = '0%';
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // SAVE (Phase 3 : Supabase)
@@ -1045,6 +1238,7 @@ function markUnsaved(){
   w.classList.add('visible');
   clearTimeout(_unsavedTimer);
   _unsavedTimer = setTimeout(()=> w.classList.remove('visible'), 3500);
+  updateCompletion();
 }
 
 // Listen for any input on the whole app
@@ -1168,6 +1362,7 @@ async function loadAudit(id){
     document.getElementById('unsavedWarning')?.classList.remove('visible');
     closeLoadModal();
     renderPreview();
+    updateCompletion();
     document.getElementById('saveStatus').textContent = 'Loaded ✓';
     setTimeout(()=>{ document.getElementById('saveStatus').textContent = 'Saved ✓'; }, 2000);
   } catch(e){
@@ -1207,6 +1402,7 @@ document.getElementById('loadModalNew').addEventListener('click', ()=>{
   hasUnsavedChanges = false;
   closeLoadModal();
   renderPreview();
+  updateCompletion();
   document.getElementById('saveStatus').textContent = 'Not saved';
 });
 
@@ -1215,6 +1411,7 @@ document.getElementById('loadModalNew').addEventListener('click', ()=>{
 // ═══════════════════════════════════════════════════════════
 buildEditorFields();
 updateStatusBtn();
+updateCompletion();
 renderPreview();
 // Auto-show load screen on launch
 setTimeout(()=> initLoadScreen(), 400);
