@@ -233,6 +233,36 @@ body{font-family:var(--font-body);background:var(--ui-bg);color:var(--ui-text);m
 
 /* ── SPACER ──────────────────────────────────────────────── */
 .spacer-auto{flex:1}
+
+/* ── LOAD MODAL (Phase 4) ────────────────────────────────── */
+.load-modal{display:none;position:fixed;inset:0;background:rgba(32,25,26,.75);z-index:999;align-items:center;justify-content:center}
+.load-modal.active{display:flex}
+.load-modal__box{background:var(--porcelain);border-radius:6px;padding:32px 36px;max-width:520px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.3);max-height:80vh;display:flex;flex-direction:column}
+.load-modal__header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.load-modal__title{font-family:var(--font-display);font-weight:800;font-size:16px;letter-spacing:.04em;text-transform:uppercase;color:var(--espresso)}
+.load-modal__sub{font-family:var(--font-body);font-size:12px;color:var(--ui-muted);margin-bottom:20px;line-height:1.5}
+.load-modal__list{overflow-y:auto;flex:1;margin-bottom:20px;display:flex;flex-direction:column;gap:8px}
+.load-modal__actions{display:flex;gap:10px;flex-shrink:0}
+.load-modal__new{font-family:var(--font-display);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;background:var(--espresso);color:var(--porcelain);border:none;border-radius:3px;padding:10px 20px;cursor:pointer;flex:1}
+.load-modal__cancel{font-family:var(--font-display);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;background:transparent;color:var(--ui-muted);border:1px solid var(--ui-border);border-radius:3px;padding:10px 14px;cursor:pointer}
+.audit-item{display:flex;align-items:center;justify-content:space-between;background:var(--ui-bg);border-radius:4px;padding:10px 14px;gap:10px}
+.audit-item__info{flex:1;min-width:0}
+.audit-item__name{font-family:var(--font-display);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ui-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.audit-item__handle{font-family:var(--font-body);font-size:11px;color:var(--ui-muted);margin-top:2px}
+.audit-item__date{font-family:var(--font-body);font-size:10px;color:var(--ui-muted);white-space:nowrap}
+.audit-item__badge{font-family:var(--font-display);font-weight:700;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;padding:2px 7px;border-radius:2px;white-space:nowrap;flex-shrink:0}
+.badge--progress{background:rgba(201,168,76,.2);color:var(--champagne)}
+.badge--done{background:rgba(127,176,105,.2);color:var(--sage)}
+.audit-item__load{font-family:var(--font-display);font-weight:700;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;background:var(--espresso);color:var(--porcelain);border:none;border-radius:2px;padding:6px 14px;cursor:pointer;flex-shrink:0}
+
+/* ── STATUS TOGGLE (Phase 4) ─────────────────────────────── */
+.status-toggle{font-family:var(--font-display);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:7px 14px;border-radius:3px;border:1px solid rgba(254,254,254,.22);background:transparent;color:rgba(254,254,254,.65);cursor:pointer;transition:all .18s;flex-shrink:0}
+.status-toggle.done{background:rgba(127,176,105,.25);border-color:var(--sage);color:var(--sage)}
+.status-toggle:hover{opacity:.82}
+
+/* ── UNSAVED WARNING (Phase 4) ──────────────────────────────*/
+.unsaved-warning{position:fixed;top:68px;left:50%;transform:translateX(-50%);background:var(--champagne);color:var(--espresso);font-family:var(--font-display);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:7px 18px;border-radius:3px;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
+.unsaved-warning.visible{opacity:1}
 </style>
 </head>
 <body>
@@ -243,10 +273,30 @@ body{font-family:var(--font-body);background:var(--ui-bg);color:var(--ui-text);m
   <span class="app-header__title">Audit Generator Pro</span>
   <div class="app-header__actions">
     <span class="save-status" id="saveStatus">Not saved</span>
+    <button class="status-toggle" id="btnStatus">In Progress</button>
+    <button class="btn btn--secondary" id="btnLoad">Load</button>
     <button class="btn btn--secondary" id="btnSave">Save</button>
     <button class="btn btn--primary" id="btnExport">Export PDF</button>
   </div>
 </header>
+
+<!-- LOAD MODAL (Phase 4) -->
+<div class="load-modal" id="loadModal">
+  <div class="load-modal__box">
+    <div class="load-modal__header">
+      <span class="load-modal__title">Load Audit</span>
+    </div>
+    <div class="load-modal__sub">Select an existing audit to continue editing, or start a new one.</div>
+    <div class="load-modal__list" id="loadModalList"></div>
+    <div class="load-modal__actions">
+      <button class="load-modal__new" id="loadModalNew">+ New Audit</button>
+      <button class="load-modal__cancel" id="loadModalCancel">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- UNSAVED WARNING (Phase 4) -->
+<div class="unsaved-warning" id="unsavedWarning">Unsaved changes</div>
 
 <!-- PRINT MODAL -->
 <div class="print-modal" id="printModal">
@@ -529,12 +579,15 @@ function renderPreview(){
   const date    = val('auditDate')   || 'May 2026';
   const prepFor = val('preparedFor') || '';
 
-  // Count total pages: cover + 2 pages per section (opener+body) + reco + nextstep
-  // Sections 12 (isPriorityReco) and 13 (isNextStep) = 1 page each
-  // Sections 0-10 = 2 pages each (opener + body) = 22 pages
-  // Total = 1 cover + 22 body + 1 reco + 1 nextstep = 25 pages
-  // Simplified: we render cover + one page per section for preview
-  const TOTAL = 1 + SECTIONS.length;
+  // Count total pages dynamically
+  // Cover: 1
+  // Standard sections (not isPriorityReco, not isNextStep): 2 pages each (opener + body)
+  // isPriorityReco sections: 1 page each
+  // isNextStep sections: 1 page each
+  const standardSections  = SECTIONS.filter(s => !s.isPriorityReco && !s.isNextStep).length;
+  const prioRecoSections   = SECTIONS.filter(s => s.isPriorityReco).length;
+  const nextStepSections   = SECTIONS.filter(s => s.isNextStep).length;
+  const TOTAL = 1 + (standardSections * 2) + prioRecoSections + nextStepSections;
 
   let pages = '';
   let pageNum = 1;
@@ -560,6 +613,7 @@ function renderPreview(){
         <div class="cover__confidential">${prepFor?'Prepared for '+prepFor+' — Confidential':'Confidential'}</div>
       </div>
     </div>
+    ${footer(1,TOTAL,true)}
   </div>`;
   pageNum++;
 
@@ -572,15 +626,13 @@ function renderPreview(){
       const intro = val('intro-'+i) || sec.ph_intro;
       let cards = '';
       for(let n=1;n<=5;n++){
-        // For priority reco we reuse the next step fields (section index 12)
-        const nsIdx = 12;
-        const t  = val('recoTitle-'+nsIdx+'-'+n) || 'Recommendation '+n;
-        const b  = val('recoBody-'+nsIdx+'-'+n)  || 'Define the action and its impact.';
-        const ef = getEffort(nsIdx,n);
+        const t  = val('recoTitle-'+i+'-'+n) || 'Recommendation '+n;
+        const rb = val('recoBody-'+i+'-'+n)  || 'Define the action and its impact.';
+        const ef = getEffort(i,n);
         const keystoneClass = n===5 ? ' reco-card--keystone' : '';
         const inner = n===5
-          ? `<div class="reco-card__inner"><div><div class="reco-card__header"><span class="reco-card__num">0${n}</span><span class="effort-tag effort-tag--${ef}">${effortLabel(ef)}</span></div><div class="reco-card__action">${t}</div></div><div class="reco-card__impact">${b}</div></div>`
-          : `<div class="reco-card__header"><span class="reco-card__num">0${n}</span><span class="effort-tag effort-tag--${ef}">${effortLabel(ef)}</span></div><div class="reco-card__action">${t}</div><div class="reco-card__impact">${b}</div>`;
+          ? `<div class="reco-card__inner"><div><div class="reco-card__header"><span class="reco-card__num">0${n}</span><span class="effort-tag effort-tag--${ef}">${effortLabel(ef)}</span></div><div class="reco-card__action">${t}</div></div><div class="reco-card__impact">${rb}</div></div>`
+          : `<div class="reco-card__header"><span class="reco-card__num">0${n}</span><span class="effort-tag effort-tag--${ef}">${effortLabel(ef)}</span></div><div class="reco-card__action">${t}</div>${rb?`<div class="reco-card__impact">${rb}</div>`:''}`;
         cards += `<div class="reco-card${keystoneClass}">${inner}</div>`;
       }
       pages += `<div class="pdf-page pdf-page--dark pdf-page--recommendations">
@@ -674,11 +726,13 @@ function renderPreview(){
       let recoItems = '';
       for(let n=1;n<=5;n++){
         const rt = val('reco'+n+'-'+i) || (sec.ph_recos?sec.ph_recos[n-1]:'');
+        const rb = val('recoBody-'+i+'-'+n) || '';
         if(!rt) continue;
         recoItems += `<div class="body__reco-item">
           <span class="body__reco-num">0${n}</span>
           <div class="body__reco-content">
             <div class="body__reco-title">${rt}</div>
+            ${rb ? `<div class="body__reco-text">${rb}</div>` : ''}
           </div>
         </div>`;
       }
@@ -816,10 +870,219 @@ document.getElementById('btnSave').addEventListener('click', ()=>{
 });
 
 // ═══════════════════════════════════════════════════════════
+// PHASE 4 — BLOC 2 : STATUS TOGGLE
+// ═══════════════════════════════════════════════════════════
+let currentStatus = 'in_progress';
+
+function updateStatusBtn(){
+  const btn = document.getElementById('btnStatus');
+  if(!btn) return;
+  if(currentStatus === 'completed'){
+    btn.textContent = 'Completed ✓';
+    btn.classList.add('done');
+  } else {
+    btn.textContent = 'In Progress';
+    btn.classList.remove('done');
+  }
+}
+
+document.getElementById('btnStatus').addEventListener('click', async ()=>{
+  currentStatus = currentStatus === 'in_progress' ? 'completed' : 'in_progress';
+  updateStatusBtn();
+  // Persist immediately if audit exists
+  if(currentAuditId && SUPABASE_URL !== 'SUPABASE_URL_HERE'){
+    try {
+      await sbFetch('audits?id=eq.'+currentAuditId, 'PATCH', { status: currentStatus });
+    } catch(e){ console.error('Status update failed:', e); }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// PHASE 4 — BLOC 3 : UNSAVED CHANGES PROTECTION
+// ═══════════════════════════════════════════════════════════
+let hasUnsavedChanges = false;
+let _unsavedTimer = null;
+
+function markUnsaved(){
+  hasUnsavedChanges = true;
+  const w = document.getElementById('unsavedWarning');
+  if(!w) return;
+  w.classList.add('visible');
+  clearTimeout(_unsavedTimer);
+  _unsavedTimer = setTimeout(()=> w.classList.remove('visible'), 3500);
+}
+
+// Listen for any input on the whole app
+document.addEventListener('input', ()=> markUnsaved());
+
+// Override saveAudit to clear flag on success
+const _origSaveAudit = saveAudit;
+saveAudit = async function(){
+  await _origSaveAudit();
+  hasUnsavedChanges = false;
+  document.getElementById('unsavedWarning')?.classList.remove('visible');
+};
+
+// monkey-patch collectState to inject status
+const _origCollectState = collectState;
+collectState = function(){
+  const data = _origCollectState();
+  data.status = currentStatus;
+  return data;
+};
+
+// ═══════════════════════════════════════════════════════════
+// PHASE 4 — BLOC 1 : LOAD SCREEN MODAL
+// ═══════════════════════════════════════════════════════════
+
+function openLoadModal(){ document.getElementById('loadModal').classList.add('active'); }
+function closeLoadModal(){ document.getElementById('loadModal').classList.remove('active'); }
+
+async function initLoadScreen(){
+  if(SUPABASE_URL === 'SUPABASE_URL_HERE') return;
+  try {
+    const audits = await sbFetch('audits?order=updated_at.desc&limit=20', 'GET');
+    if(!audits || audits.length === 0) return;
+    // Build list
+    const list = document.getElementById('loadModalList');
+    list.innerHTML = '';
+    audits.forEach(a => {
+      const name   = a.client_name   || 'Unnamed audit';
+      const handle = a.client_handle || '';
+      const date   = a.updated_at ? new Date(a.updated_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+      const status = a.status || 'in_progress';
+      const badgeClass = status === 'completed' ? 'badge--done' : 'badge--progress';
+      const badgeLabel = status === 'completed' ? 'Completed' : 'In Progress';
+      const div = document.createElement('div');
+      div.className = 'audit-item';
+      div.innerHTML = `
+        <div class="audit-item__info">
+          <div class="audit-item__name">${name}</div>
+          <div class="audit-item__handle">${handle}</div>
+        </div>
+        <div class="audit-item__date">${date}</div>
+        <span class="audit-item__badge ${badgeClass}">${badgeLabel}</span>
+        <button class="audit-item__load" data-id="${a.id}">Load</button>`;
+      list.appendChild(div);
+    });
+    openLoadModal();
+  } catch(e){ console.error('Load screen failed:', e); }
+}
+
+async function loadAudit(id){
+  try {
+    const rows = await sbFetch('audits?id=eq.'+id, 'GET');
+    if(!rows || rows.length === 0) return;
+    const a = rows[0];
+    // Restore client info
+    document.getElementById('clientName').value    = a.client_name   || '';
+    document.getElementById('clientHandle').value  = a.client_handle || '';
+    document.getElementById('auditDate').value      = a.audit_date    || '';
+    document.getElementById('preparedFor').value    = a.prepared_for  || '';
+    // Restore sections
+    if(a.sections){
+      SECTIONS.forEach((sec,i)=>{
+        const s = a.sections[sec.key];
+        if(!s) return;
+        // score
+        if(document.getElementById('score-'+i)){
+          document.getElementById('score-'+i).value = s.score || 50;
+          if(document.getElementById('scoreNum-'+i)) document.getElementById('scoreNum-'+i).value = s.score || 50;
+          updateScoreBadge(i);
+        }
+        // intro
+        if(document.getElementById('intro-'+i)) document.getElementById('intro-'+i).value = s.intro || '';
+        // obs
+        if(document.getElementById('obs-'+i)) document.getElementById('obs-'+i).value = s.obs || '';
+        // recos
+        if(s.recos && Array.isArray(s.recos)){
+          s.recos.forEach((r,idx)=>{
+            const n = idx + 1;
+            // standard reco title (reco1-0 style)
+            const stdEl = document.getElementById('reco'+n+'-'+i);
+            if(stdEl) stdEl.value = r.title || '';
+            // recoTitle-i-n style (next step + priority reco)
+            const ttEl = document.getElementById('recoTitle-'+i+'-'+n);
+            if(ttEl) ttEl.value = r.title || '';
+            // recoBody
+            const rbEl = document.getElementById('recoBody-'+i+'-'+n);
+            if(rbEl) rbEl.value = r.body || '';
+          });
+        }
+        // polaroid caption
+        if(document.getElementById('polCaption-'+i)) document.getElementById('polCaption-'+i).value = s.polCaption || '';
+      });
+    }
+    // Restore effort
+    if(a.effort_values){
+      Object.assign(effortValues, a.effort_values);
+      // Re-apply effort UI
+      SECTIONS.forEach((_sec,i)=>{
+        for(let n=1;n<=5;n++){
+          const v = effortValues[i+'-'+n];
+          if(v) setEffort(i,n,v);
+        }
+      });
+    }
+    // Restore status
+    currentStatus = a.status || 'in_progress';
+    updateStatusBtn();
+    // Set currentAuditId
+    currentAuditId = id;
+    hasUnsavedChanges = false;
+    document.getElementById('unsavedWarning')?.classList.remove('visible');
+    closeLoadModal();
+    renderPreview();
+    document.getElementById('saveStatus').textContent = 'Loaded ✓';
+    setTimeout(()=>{ document.getElementById('saveStatus').textContent = 'Saved ✓'; }, 2000);
+  } catch(e){
+    console.error('loadAudit error:', e);
+    alert('Failed to load audit. Check console.');
+  }
+}
+
+// Wire Load modal buttons
+document.getElementById('loadModalList').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-id]');
+  if(!btn) return;
+  const id = btn.dataset.id;
+  if(hasUnsavedChanges){
+    if(!confirm('You have unsaved changes. Load anyway and discard them?')) return;
+  }
+  loadAudit(id);
+});
+
+document.getElementById('btnLoad').addEventListener('click', ()=> initLoadScreen());
+document.getElementById('loadModalCancel').addEventListener('click', ()=> closeLoadModal());
+document.getElementById('loadModalNew').addEventListener('click', ()=>{
+  if(hasUnsavedChanges){
+    if(!confirm('You have unsaved changes. Start a new audit and discard them?')) return;
+  }
+  // Reset all fields
+  document.getElementById('clientName').value   = '';
+  document.getElementById('clientHandle').value = '';
+  document.getElementById('auditDate').value    = '';
+  document.getElementById('preparedFor').value  = '';
+  buildEditorFields();
+  Object.keys(effortValues).forEach(k=> delete effortValues[k]);
+  Object.keys(uploadedImages).forEach(k=> delete uploadedImages[k]);
+  currentAuditId = null;
+  currentStatus  = 'in_progress';
+  updateStatusBtn();
+  hasUnsavedChanges = false;
+  closeLoadModal();
+  renderPreview();
+  document.getElementById('saveStatus').textContent = 'Not saved';
+});
+
+// ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
 buildEditorFields();
+updateStatusBtn();
 renderPreview();
+// Auto-show load screen on launch
+setTimeout(()=> initLoadScreen(), 400);
 </script>
 </body>
 </html>
