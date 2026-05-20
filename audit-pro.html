@@ -272,6 +272,30 @@ body{font-family:var(--font-body);background:var(--ui-bg);color:var(--ui-text);m
 .completion-bar__track{flex:1;height:4px;background:var(--ui-border);border-radius:2px;overflow:hidden}
 .completion-bar__fill{height:100%;border-radius:2px;background:var(--champagne);transition:width .3s,background .3s}
 .completion-bar__count{font-family:var(--font-display);font-weight:700;font-size:9px;letter-spacing:.10em;color:var(--ui-muted);flex-shrink:0;white-space:nowrap}
+.completion-bar__btn{font-family:var(--font-display);font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;background:transparent;border:1px solid var(--ui-border);color:var(--ui-muted);padding:3px 9px;border-radius:2px;cursor:pointer;flex-shrink:0;transition:all .15s}
+.completion-bar__btn:hover{border-color:var(--espresso);color:var(--espresso)}
+
+/* ── OVERVIEW MODAL ──────────────────────────────────────── */
+.overview-modal{display:none;position:fixed;inset:0;background:rgba(32,25,26,.75);z-index:999;align-items:flex-start;justify-content:flex-start}
+.overview-modal.active{display:flex}
+.overview-modal__box{background:var(--ui-surface);width:360px;height:100%;overflow-y:auto;box-shadow:4px 0 24px rgba(0,0,0,.2);display:flex;flex-direction:column}
+.overview-modal__header{padding:20px 20px 14px;border-bottom:1px solid var(--ui-border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
+.overview-modal__title{font-family:var(--font-display);font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--espresso)}
+.overview-modal__close{background:transparent;border:none;cursor:pointer;font-size:16px;color:var(--ui-muted);line-height:1;padding:2px 4px}
+.overview-modal__close:hover{color:var(--espresso)}
+.overview-modal__list{padding:12px 0;flex:1}
+.overview-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;transition:background .12s}
+.overview-item:hover{background:rgba(32,25,26,.04)}
+.overview-item__dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.overview-item__dot--done{background:var(--sage)}
+.overview-item__dot--partial{background:var(--champagne)}
+.overview-item__dot--empty{background:rgba(32,25,26,.18)}
+.overview-item__name{font-family:var(--font-display);font-weight:700;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ui-text);flex:1}
+.overview-item__status{font-family:var(--font-display);font-weight:700;font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-muted)}
+.overview-item__status--done{color:var(--sage)}
+.overview-item__status--partial{color:var(--champagne)}
+.overview-modal__footer{padding:14px 20px;border-top:1px solid var(--ui-border);flex-shrink:0}
+.overview-modal__footer-text{font-family:var(--font-body);font-size:11px;color:var(--ui-muted);line-height:1.5}
 
 /* ── EXPORT PROGRESS OVERLAY ─────────────────────────────── */
 .export-overlay{display:none;position:fixed;inset:0;background:rgba(32,25,26,.88);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px}
@@ -372,6 +396,21 @@ body{font-family:var(--font-body);background:var(--ui-bg);color:var(--ui-text);m
   <span class="completion-bar__label">Completion</span>
   <div class="completion-bar__track"><div class="completion-bar__fill" id="completionFill" style="width:0%"></div></div>
   <span class="completion-bar__count" id="completionCount">0 / 13</span>
+  <button class="completion-bar__btn" id="btnOverview">View</button>
+</div>
+
+<!-- OVERVIEW MODAL -->
+<div class="overview-modal" id="overviewModal">
+  <div class="overview-modal__box">
+    <div class="overview-modal__header">
+      <span class="overview-modal__title">Audit Overview</span>
+      <button class="overview-modal__close" id="overviewClose">✕</button>
+    </div>
+    <div class="overview-modal__list" id="overviewList"></div>
+    <div class="overview-modal__footer">
+      <div class="overview-modal__footer-text">Click any section to jump to it in the editor.</div>
+    </div>
+  </div>
 </div>
 
 <!-- CHECKLIST MODAL (pre-export) -->
@@ -1021,6 +1060,80 @@ function updateCompletion(){
   }
   if(count) count.textContent = filled+' / '+total;
 }
+
+// ═══════════════════════════════════════════════════════════
+// OVERVIEW MODAL
+// ═══════════════════════════════════════════════════════════
+function getSectionStatus(sec, i){
+  if(sec.isExecutiveSummary){
+    const ok = (val('intro-'+i)||'').trim().length > 10;
+    return ok ? 'done' : 'empty';
+  }
+  if(sec.isPriorityReco || sec.isNextStep){
+    let count = 0;
+    for(let n=1;n<=5;n++){
+      if((val('recoTitle-'+i+'-'+n)||'').trim().length > 3) count++;
+    }
+    return count >= 3 ? 'done' : count > 0 ? 'partial' : 'empty';
+  }
+  // Standard section
+  const hasIntro = (val('intro-'+i)||'').trim().length > 10;
+  const hasObs   = (val('obs-'+i)||'').trim().length > 10;
+  let recoCount  = 0;
+  for(let n=1;n<=5;n++){
+    if((val('reco'+n+'-'+i)||'').trim().length > 3) recoCount++;
+  }
+  if(hasIntro && hasObs && recoCount >= 1) return 'done';
+  if(hasIntro || hasObs || recoCount > 0)  return 'partial';
+  return 'empty';
+}
+
+function buildOverviewList(){
+  const list = document.getElementById('overviewList');
+  if(!list) return;
+  list.innerHTML = '';
+  SECTIONS.forEach((sec, i) => {
+    const status = getSectionStatus(sec, i);
+    const num    = String(i+1).padStart(2,'0');
+    const dotClass   = `overview-item__dot--${status}`;
+    const statLabel  = status === 'done' ? 'Complete' : status === 'partial' ? 'In progress' : 'Empty';
+    const statClass  = `overview-item__status--${status === 'done' ? 'done' : status === 'partial' ? 'partial' : ''}`;
+    const div = document.createElement('div');
+    div.className = 'overview-item';
+    div.innerHTML = `
+      <span class="overview-item__dot ${dotClass}"></span>
+      <span class="overview-item__name">${num} — ${sec.title}</span>
+      <span class="overview-item__status ${statClass}">${statLabel}</span>`;
+    div.addEventListener('click', () => {
+      // Open that section in editor and close modal
+      const secBody = document.getElementById('sec-'+i);
+      if(secBody) secBody.style.display = 'block';
+      document.getElementById('overviewModal').classList.remove('active');
+      // Scroll to section in editor
+      setTimeout(()=>{
+        const header = secBody?.previousElementSibling;
+        if(header) header.scrollIntoView({ behavior:'smooth', block:'start' });
+      }, 100);
+    });
+    list.appendChild(div);
+  });
+}
+
+document.getElementById('btnOverview').addEventListener('click', ()=>{
+  buildOverviewList();
+  document.getElementById('overviewModal').classList.add('active');
+});
+
+document.getElementById('overviewClose').addEventListener('click', ()=>{
+  document.getElementById('overviewModal').classList.remove('active');
+});
+
+// Close on backdrop click
+document.getElementById('overviewModal').addEventListener('click', e=>{
+  if(e.target === document.getElementById('overviewModal')){
+    document.getElementById('overviewModal').classList.remove('active');
+  }
+});
 
 // ═══════════════════════════════════════════════════════════
 // CHECKLIST MODAL
